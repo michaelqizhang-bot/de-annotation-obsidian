@@ -29,6 +29,7 @@ __export(exports, {
 var import_obsidian = __toModule(require("obsidian"));
 var import_child_process = __toModule(require("child_process"));
 var path = __toModule(require("path"));
+var fs = __toModule(require("fs"));
 var BACKEND_URL = "http://localhost:5000";
 var ANNOTATION_VIEW_TYPE = "de-annotation-view";
 var CATEGORIES = [
@@ -109,6 +110,18 @@ var DeAnnotationPlugin = class extends import_obsidian.Plugin {
     }
     return null;
   }
+  log(message) {
+    const line = `[${new Date().toISOString()}] ${message}`;
+    console.log(line);
+    try {
+      const pluginDir = this.getPluginDir();
+      if (pluginDir) {
+        fs.appendFileSync(path.join(pluginDir, "debug.log"), line + "\n", "utf-8");
+      }
+    } catch (e) {
+      console.error("\u5199 debug.log \u5931\u8D25\uFF1A", e);
+    }
+  }
   async isBackendUp() {
     try {
       const controller = new AbortController();
@@ -137,10 +150,13 @@ var DeAnnotationPlugin = class extends import_obsidian.Plugin {
       return;
     }
     const scriptPath = path.join(pluginDir, "backend_app.py");
-    console.log("\u{1F527} \u63D2\u4EF6\u76EE\u5F55\uFF1A", pluginDir);
-    console.log("\u{1F527} \u540E\u7AEF\u811A\u672C\u8DEF\u5F84\uFF1A", scriptPath);
+    this.log(`\u{1F527} \u63D2\u4EF6\u76EE\u5F55\uFF1A${pluginDir}`);
+    this.log(`\u{1F527} \u540E\u7AEF\u811A\u672C\u8DEF\u5F84\uFF1A${scriptPath}`);
+    this.log(`\u{1F527} \u811A\u672C\u662F\u5426\u5B58\u5728\uFF1A${fs.existsSync(scriptPath)}`);
+    this.log(`\u{1F527} process.env.PATH\uFF1A${process.env.PATH}`);
     try {
       new import_obsidian.Notice("\u{1F680} \u6B63\u5728\u81EA\u52A8\u542F\u52A8\u540E\u7AEF\u670D\u52A1...");
+      this.log('\u{1F527} \u5373\u5C06\u6267\u884C spawn("python", [scriptPath], {shell:true, ...})');
       this.backendProcess = (0, import_child_process.spawn)("python", [scriptPath], {
         cwd: pluginDir,
         windowsHide: true,
@@ -148,32 +164,36 @@ var DeAnnotationPlugin = class extends import_obsidian.Plugin {
         stdio: ["ignore", "pipe", "pipe"]
       });
       this.startedByUs = true;
+      this.log(`\u{1F527} spawn \u5DF2\u8C03\u7528\uFF0C\u5B50\u8FDB\u7A0B PID\uFF1A${this.backendProcess.pid}`);
       (_a = this.backendProcess.stdout) == null ? void 0 : _a.on("data", (data) => {
-        console.log("[backend stdout]", data.toString());
+        this.log(`[backend stdout] ${data.toString()}`);
       });
       (_b = this.backendProcess.stderr) == null ? void 0 : _b.on("data", (data) => {
-        console.log("[backend stderr]", data.toString());
+        this.log(`[backend stderr] ${data.toString()}`);
       });
       this.backendProcess.on("error", (err) => {
-        console.error("\u274C \u542F\u52A8\u540E\u7AEF\u5931\u8D25\uFF08spawn error\uFF09\uFF1A", err);
+        this.log(`\u274C \u542F\u52A8\u540E\u7AEF\u5931\u8D25\uFF08spawn error\uFF09\uFF1A${err.message}
+${err.stack}`);
         new import_obsidian.Notice(`\u274C \u65E0\u6CD5\u542F\u52A8\u540E\u7AEF\u670D\u52A1\uFF1A${err.message}`);
       });
       this.backendProcess.on("exit", (code, signal) => {
-        console.log(`\u540E\u7AEF\u8FDB\u7A0B\u9000\u51FA\uFF0C\u9000\u51FA\u7801\uFF1A${code}\uFF0C\u4FE1\u53F7\uFF1A${signal}`);
+        this.log(`\u540E\u7AEF\u8FDB\u7A0B\u9000\u51FA\uFF0C\u9000\u51FA\u7801\uFF1A${code}\uFF0C\u4FE1\u53F7\uFF1A${signal}`);
         this.backendAvailable = false;
       });
       for (let i = 0; i < 20; i++) {
         await new Promise((r) => setTimeout(r, 1e3));
         if (await this.isBackendUp()) {
           this.backendAvailable = true;
+          this.log("\u2705 \u5065\u5EB7\u68C0\u67E5\u901A\u8FC7\uFF0C\u540E\u7AEF\u542F\u52A8\u6210\u529F");
           new import_obsidian.Notice("\u2705 \u540E\u7AEF\u670D\u52A1\u542F\u52A8\u6210\u529F");
           return;
         }
       }
+      this.log("\u26A0\uFE0F 20 \u79D2\u8F6E\u8BE2\u7ED3\u675F\uFF0C\u5065\u5EB7\u68C0\u67E5\u59CB\u7EC8\u672A\u901A\u8FC7");
       this.backendAvailable = false;
       new import_obsidian.Notice("\u26A0\uFE0F \u540E\u7AEF\u670D\u52A1\u542F\u52A8\u8D85\u65F6\uFF0C\u8BF7\u68C0\u67E5 Python \u73AF\u5883\u6216\u624B\u52A8\u8FD0\u884C backend_app.py");
     } catch (e) {
-      console.error("\u542F\u52A8\u540E\u7AEF\u5F02\u5E38\uFF1A", e);
+      this.log(`\u542F\u52A8\u540E\u7AEF\u5F02\u5E38\uFF1A${e}`);
       new import_obsidian.Notice(`\u274C \u542F\u52A8\u540E\u7AEF\u670D\u52A1\u5931\u8D25\uFF1A${e}`);
       this.backendAvailable = false;
     }
