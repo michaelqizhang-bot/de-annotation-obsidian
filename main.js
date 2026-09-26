@@ -4,39 +4,31 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __markAsModule = (target) => __defProp(target, "__esModule", { value: true });
 var __export = (target, all) => {
+  __markAsModule(target);
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+var __reExport = (target, module2, desc) => {
+  if (module2 && typeof module2 === "object" || typeof module2 === "function") {
+    for (let key of __getOwnPropNames(module2))
+      if (!__hasOwnProp.call(target, key) && key !== "default")
+        __defProp(target, key, { get: () => module2[key], enumerable: !(desc = __getOwnPropDesc(module2, key)) || desc.enumerable });
   }
-  return to;
+  return target;
 };
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __toModule = (module2) => {
+  return __reExport(__markAsModule(__defProp(module2 != null ? __create(__getProtoOf(module2)) : {}, "default", module2 && module2.__esModule && "default" in module2 ? { get: () => module2.default, enumerable: true } : { value: module2, enumerable: true })), module2);
+};
 
 // main.ts
-var main_exports = {};
-__export(main_exports, {
+__export(exports, {
   default: () => DeAnnotationPlugin
 });
-module.exports = __toCommonJS(main_exports);
-var import_obsidian = require("obsidian");
-var import_child_process = require("child_process");
-var path = __toESM(require("path"));
+var import_obsidian = __toModule(require("obsidian"));
+var import_child_process = __toModule(require("child_process"));
+var path = __toModule(require("path"));
 var BACKEND_URL = "http://localhost:5000";
 var ANNOTATION_VIEW_TYPE = "de-annotation-view";
 var CATEGORIES = [
@@ -53,15 +45,17 @@ var CATEGORIES = [
 var DeAnnotationPlugin = class extends import_obsidian.Plugin {
   constructor() {
     super(...arguments);
-    __publicField(this, "settings", {});
-    __publicField(this, "backendAvailable", false);
-    __publicField(this, "backendProcess", null);
-    __publicField(this, "startedByUs", false);
+    this.settings = {};
+    this.backendAvailable = false;
+    this.backendProcess = null;
+    this.startedByUs = false;
   }
   async onload() {
     console.log("\u{1F680} \u5FB7\u8BED\u8BCD\u7C7B\u6807\u6CE8\u63D2\u4EF6\u52A0\u8F7D\u4E2D...");
     await this.loadSettings();
-    await this.ensureBackendRunning();
+    this.ensureBackendRunning().catch((e) => {
+      console.error("\u274C \u540E\u53F0\u542F\u52A8\u540E\u7AEF\u670D\u52A1\u65F6\u51FA\u73B0\u5F02\u5E38\uFF1A", e);
+    });
     this.registerView(ANNOTATION_VIEW_TYPE, (leaf) => new AnnotationPanelView(leaf, this));
     this.addRibbonIcon("pencil", "\u5FB7\u8BED\u6807\u6CE8", async () => {
       await this.activateAnnotationPanel();
@@ -107,7 +101,6 @@ var DeAnnotationPlugin = class extends import_obsidian.Plugin {
   async saveSettings() {
     await this.saveData(this.settings);
   }
-  /** 获取插件所在目录的绝对路径（仅桌面版可用） */
   getPluginDir() {
     const adapter = this.app.vault.adapter;
     if (adapter instanceof import_obsidian.FileSystemAdapter) {
@@ -116,7 +109,6 @@ var DeAnnotationPlugin = class extends import_obsidian.Plugin {
     }
     return null;
   }
-  /** 探测后端是否已在运行 */
   async isBackendUp() {
     try {
       const controller = new AbortController();
@@ -128,8 +120,8 @@ var DeAnnotationPlugin = class extends import_obsidian.Plugin {
       return false;
     }
   }
-  /** 确保后端在运行：先探测，不在运行则自动启动 python backend_app.py */
   async ensureBackendRunning(forceRestart = false) {
+    var _a, _b;
     if (forceRestart) {
       this.stopBackend();
     }
@@ -145,20 +137,29 @@ var DeAnnotationPlugin = class extends import_obsidian.Plugin {
       return;
     }
     const scriptPath = path.join(pluginDir, "backend_app.py");
+    console.log("\u{1F527} \u63D2\u4EF6\u76EE\u5F55\uFF1A", pluginDir);
+    console.log("\u{1F527} \u540E\u7AEF\u811A\u672C\u8DEF\u5F84\uFF1A", scriptPath);
     try {
       new import_obsidian.Notice("\u{1F680} \u6B63\u5728\u81EA\u52A8\u542F\u52A8\u540E\u7AEF\u670D\u52A1...");
       this.backendProcess = (0, import_child_process.spawn)("python", [scriptPath], {
         cwd: pluginDir,
         windowsHide: true,
-        stdio: "ignore"
+        shell: true,
+        stdio: ["ignore", "pipe", "pipe"]
       });
       this.startedByUs = true;
+      (_a = this.backendProcess.stdout) == null ? void 0 : _a.on("data", (data) => {
+        console.log("[backend stdout]", data.toString());
+      });
+      (_b = this.backendProcess.stderr) == null ? void 0 : _b.on("data", (data) => {
+        console.log("[backend stderr]", data.toString());
+      });
       this.backendProcess.on("error", (err) => {
-        console.error("\u274C \u542F\u52A8\u540E\u7AEF\u5931\u8D25\uFF1A", err);
+        console.error("\u274C \u542F\u52A8\u540E\u7AEF\u5931\u8D25\uFF08spawn error\uFF09\uFF1A", err);
         new import_obsidian.Notice(`\u274C \u65E0\u6CD5\u542F\u52A8\u540E\u7AEF\u670D\u52A1\uFF1A${err.message}`);
       });
-      this.backendProcess.on("exit", (code) => {
-        console.log(`\u540E\u7AEF\u8FDB\u7A0B\u9000\u51FA\uFF0C\u9000\u51FA\u7801\uFF1A${code}`);
+      this.backendProcess.on("exit", (code, signal) => {
+        console.log(`\u540E\u7AEF\u8FDB\u7A0B\u9000\u51FA\uFF0C\u9000\u51FA\u7801\uFF1A${code}\uFF0C\u4FE1\u53F7\uFF1A${signal}`);
         this.backendAvailable = false;
       });
       for (let i = 0; i < 20; i++) {
@@ -177,7 +178,6 @@ var DeAnnotationPlugin = class extends import_obsidian.Plugin {
       this.backendAvailable = false;
     }
   }
-  /** 停止我们自己启动的后端进程（插件卸载/重启时清理） */
   stopBackend() {
     if (this.backendProcess && this.startedByUs) {
       try {
@@ -267,7 +267,6 @@ var DeAnnotationPlugin = class extends import_obsidian.Plugin {
 var AnnotationPanelView = class extends import_obsidian.View {
   constructor(leaf, plugin) {
     super(leaf);
-    __publicField(this, "plugin");
     this.plugin = plugin;
   }
   getViewType() {
@@ -335,18 +334,15 @@ var AnnotationPanelView = class extends import_obsidian.View {
 var DeAnnotationSettingTab = class extends import_obsidian.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
-    __publicField(this, "plugin");
     this.plugin = plugin;
   }
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    new import_obsidian.Setting(containerEl).setName("\u540E\u7AEF\u670D\u52A1\u5730\u5740").setDesc("Python \u540E\u7AEF\u670D\u52A1\u7684 URL").addText(
-      (text) => text.setPlaceholder("http://localhost:5000").setValue(this.plugin.settings.backendUrl || "http://localhost:5000").onChange(async (value) => {
-        this.plugin.settings.backendUrl = value;
-        await this.plugin.saveSettings();
-      })
-    );
+    new import_obsidian.Setting(containerEl).setName("\u540E\u7AEF\u670D\u52A1\u5730\u5740").setDesc("Python \u540E\u7AEF\u670D\u52A1\u7684 URL").addText((text) => text.setPlaceholder("http://localhost:5000").setValue(this.plugin.settings.backendUrl || "http://localhost:5000").onChange(async (value) => {
+      this.plugin.settings.backendUrl = value;
+      await this.plugin.saveSettings();
+    }));
     new import_obsidian.Setting(containerEl).setName("\u68C0\u67E5\u8FDE\u63A5").setDesc("\u70B9\u51FB\u68C0\u67E5\u540E\u7AEF\u670D\u52A1\u662F\u5426\u53EF\u7528\uFF08\u5982\u672A\u8FD0\u884C\u4F1A\u81EA\u52A8\u5C1D\u8BD5\u542F\u52A8\uFF09").addButton((button) => {
       button.setButtonText("\u68C0\u67E5").onClick(async () => {
         await this.plugin.checkBackendConnection();
@@ -357,14 +353,12 @@ var DeAnnotationSettingTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.ensureBackendRunning(true);
       });
     });
-    new import_obsidian.Setting(containerEl).setName("\u542F\u7528\u5B89\u5353\u67E5\u770B\u6A21\u5F0F").setDesc("\u5982\u542F\u7528\uFF0C\u6807\u6CE8\u5C06\u4EE5 Markdown \u683C\u5F0F\u5B58\u50A8\uFF0C\u4FBF\u4E8E\u5728\u5B89\u5353\u8BBE\u5907\u4E0A\u67E5\u770B").addToggle(
-      (toggle) => {
-        var _a;
-        return toggle.setValue((_a = this.plugin.settings.androidViewMode) != null ? _a : true).onChange(async (value) => {
-          this.plugin.settings.androidViewMode = value;
-          await this.plugin.saveSettings();
-        });
-      }
-    );
+    new import_obsidian.Setting(containerEl).setName("\u542F\u7528\u5B89\u5353\u67E5\u770B\u6A21\u5F0F").setDesc("\u5982\u542F\u7528\uFF0C\u6807\u6CE8\u5C06\u4EE5 Markdown \u683C\u5F0F\u5B58\u50A8\uFF0C\u4FBF\u4E8E\u5728\u5B89\u5353\u8BBE\u5907\u4E0A\u67E5\u770B").addToggle((toggle) => {
+      var _a;
+      return toggle.setValue((_a = this.plugin.settings.androidViewMode) != null ? _a : true).onChange(async (value) => {
+        this.plugin.settings.androidViewMode = value;
+        await this.plugin.saveSettings();
+      });
+    });
   }
 };
